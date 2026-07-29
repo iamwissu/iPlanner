@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>iPlanner — G3 APPs</title>
+<meta name="description" content="A print-ready lesson planner for teachers. Pick a framework, tag interaction patterns, insert ready-made activities, and export a polished PDF — no typing from scratch." />
+<meta name="theme-color" content="#1E2A38" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="iPlanner" />
+<script>
+  // Apply saved theme before first paint to avoid a light/dark flash
+  try{
+    var t = localStorage.getItem('iplanner.theme');
+    if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)){
+      document.documentElement.classList.add('dark');
+    }
+  }catch(e){}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          ink: { DEFAULT: '#1E2A38', 700: '#2A3B4E', 500: '#5B6472' },
+          paper: { DEFAULT: '#FBF8F1', 100: '#F3EFE3', 200: '#EAE4D3' },
+          forest: { DEFAULT: '#2F6B4F', 600: '#26593F' },
+          amber:  { DEFAULT: '#E3A83B', 600: '#C68F2A' },
+          brick:  { DEFAULT: '#C1443B', 600: '#A6362E' },
+          slate:  { DEFAULT: '#3B6EA5', 600: '#2F5A87' },
+          plum:   { DEFAULT: '#7B5EA7', 600: '#654B8C' },
+          teal:   { DEFAULT: '#2E8B84', 600: '#25726C' },
+        },
+        fontFamily: {
+          display: ['"Fraunces"', 'serif'],
+          body: ['"Inter"', 'sans-serif'],
+          mono: ['"IBM Plex Mono"', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  :root{
+    --ruler-line: rgba(251,248,241,0.14);
+  }
+  html,body{ background:#FBF8F1; }
+  body{ font-family:'Inter',sans-serif; }
+  .font-display{ font-family:'Fraunces',serif; }
+  .font-mono{ font-family:'IBM Plex Mono',monospace; }
+
+  /* ---- Ruler / measuring-tape texture for the timer bar ---- */
+  .ruler-ticks{
+    background-image: repeating-linear-gradient(90deg, var(--ruler-line) 0 1px, transparent 1px 24px);
+  }
+
+  /* ---- Paper card with a faint corkboard pin shadow ---- */
+  .stage-card{
+    background: #FFFEFB;
+    border: 1px solid #E7E0CC;
+    box-shadow: 0 1px 0 rgba(30,42,56,0.03), 0 8px 20px -14px rgba(30,42,56,0.35);
+  }
+  .stage-card:focus-within{
+    box-shadow: 0 0 0 3px rgba(47,107,79,0.25), 0 8px 20px -14px rgba(30,42,56,0.35);
+  }
+
+  /* ---- Stamp badge (signature element) ---- */
+  .stamp{
+    display:inline-flex;
+    align-items:center;
+    gap:.4rem;
+    border:2px solid currentColor;
+    border-radius:9999px;
+    padding:.3rem .85rem;
+    transform: rotate(-2deg);
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    letter-spacing:.02em;
+    position:relative;
+  }
+  .stamp::after{
+    content:'';
+    position:absolute; inset:3px;
+    border:1px dashed currentColor;
+    border-radius:9999px;
+    opacity:.55;
+  }
+
+  /* ---- Interaction chips ---- */
+  .chip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.72rem;
+    font-weight:600;
+    letter-spacing:.02em;
+    border-radius:.4rem;
+    padding:.4rem .55rem;
+    border:1.5px solid transparent;
+    transition: all .12s ease;
+    min-height:38px;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .chip[data-active="false"]{ background:#F3EFE3; color:#5B6472; border-color:#E7E0CC; }
+  .chip[data-active="false"]:hover{ border-color:#c9c0a0; }
+  .chip[data-tone="slate"][data-active="true"]{ background:#3B6EA5; color:#fff; }
+  .chip[data-tone="plum"][data-active="true"]{ background:#7B5EA7; color:#fff; }
+  .chip[data-tone="teal"][data-active="true"]{ background:#2E8B84; color:#fff; }
+  .chip[data-tone="amber"][data-active="true"]{ background:#C68F2A; color:#fff; }
+  .chip[data-tone="brick"][data-active="true"]{ background:#C1443B; color:#fff; }
+  .chip[data-tone="forest"][data-active="true"]{ background:#2F6B4F; color:#fff; }
+
+  /* ---- Snippet macro pills (quick-insert procedure text) ---- */
+  .snippet-pill{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.68rem;
+    font-weight:500;
+    white-space:nowrap;
+    border-radius:9999px;
+    padding:.3rem .65rem;
+    border:1px solid #E7E0CC;
+    background:#F3EFE3;
+    color:#5B6472;
+    min-height:30px;
+    transition: all .12s ease;
+  }
+  .snippet-pill:hover{ border-color:#2F6B4F; color:#2F6B4F; background:#fff; }
+
+  /* =========================== DARK MODE =========================== */
+  html.dark, html.dark body{ background:#0f172a; }
+  .dark .stage-card{ background:#1e293b; border-color:#334155; box-shadow:none; }
+  .dark .chip[data-active="false"]{ background:#0f172a; color:#94a3b8; border-color:#334155; }
+  .dark .chip[data-active="false"]:hover{ border-color:#475569; }
+  .dark .snippet-pill{ background:#0f172a; color:#94a3b8; border-color:#334155; }
+  .dark .snippet-pill:hover{ border-color:#E3A83B; color:#E3A83B; background:#1e293b; }
+  .dark .modal-backdrop{ background: rgba(0,0,0,0.65); }
+  .dark .field-select{
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");
+  }
+  .dark ::selection{ background:#E3A83B; color:#0f172a; }
+
+  textarea.stage-notes{ field-sizing: content; }
+
+  ::selection{ background:#E3A83B; color:#1E2A38; }
+
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible{
+    outline: 2px solid #2F6B4F; outline-offset: 2px;
+  }
+
+  /* Custom select chevron on paper inputs */
+  .field-select{
+    appearance:none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235B6472' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat:no-repeat; background-position:right .75rem center; background-size:14px;
+  }
+
+  .modal-backdrop{ background: rgba(30,42,56,0.55); backdrop-filter: blur(2px); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  /* =========================== SPLASH OVERLAY =========================== */
+  #splashOverlay{
+    position: fixed; inset: 0; z-index: 999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #1E2A38;
+    opacity: 0;
+    transition: opacity .6s ease;
+    pointer-events: none;
+  }
+  #splashOverlay.splash-visible{ opacity: 1; pointer-events: all; }
+
+  /* =========================== PRINT =========================== */
+  #printSheet{ display:none; }
+  @media print{
+    @page{ size: A4; margin: 14mm; }
+    html,body{ background:var(--print-paper-bg, #FBF8F1) !important; }
+    body *{ visibility:hidden; }
+    #printSheet, #printSheet *{ visibility:visible; }
+    #printSheet{
+      display:block !important;
+      position:absolute; left:0; top:0; width:100%;
+      font-family:'Inter',sans-serif; color:#1E2A38;
+    }
+    .no-print{ display:none !important; }
+    .ps-badge{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body class="text-ink dark:text-slate-100">
+
+<!-- ============ Splash overlay (brand intro on load) ============ -->
+<div id="splashOverlay" aria-hidden="true">
+  <div class="stamp text-paper text-2xl sm:text-3xl mb-3" style="border-color:#FBF8F1;">iPlanner</div>
+  <p class="font-mono text-[11px] tracking-[0.25em] uppercase text-paper/60">by G3 Apps</p>
+</div>
+<script>
+  (function(){
+    var splash = document.getElementById('splashOverlay');
+    if (!splash) return;
+    // Double rAF ensures the browser paints the initial (invisible) state
+    // before we flip to visible, so the transition actually animates.
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ splash.classList.add('splash-visible'); });
+    });
+    setTimeout(function(){
+      splash.classList.remove('splash-visible');
+      setTimeout(function(){ splash.style.display = 'none'; }, 700);
+    }, 1500);
+  })();
+</script>
+
+<div id="app" class="min-h-screen flex flex-col">
+
+  <!-- ============ Sticky timer / progress bar ============ -->
+  <div id="timerBar" class="no-print sticky top-0 z-40 bg-ink text-paper ruler-ticks border-b border-black/20">
+    <div class="max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div class="flex items-center gap-2">
+        <span class="font-mono text-[10px] uppercase tracking-widest text-paper/60">Target</span>
+        <span id="targetMinLabel" class="font-mono font-semibold text-sm">— min</span>
+      </div>
+      <div class="flex-1 min-w-[100px] h-2 rounded-full bg-white/10 overflow-hidden">
+        <div id="timerFill" class="h-full rounded-full bg-forest transition-all duration-300" style="width:0%"></div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="font-mono text-[10px] uppercase tracking-widest text-paper/60">Allocated</span>
+        <span id="allocatedLabel" class="font-mono font-semibold text-sm">0 min</span>
+      </div>
+      <span id="timerFlag" class="hidden font-mono text-[11px] font-semibold bg-brick text-white px-2 py-1 rounded">⚠ Over target</span>
+      <span id="saveIndicator" class="ml-auto font-mono text-[10px] text-paper/50 flex items-center gap-1">
+        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        Saved
+      </span>
+    </div>
+  </div>
+
+  <!-- ============ Masthead ============ -->
+  <header class="no-print max-w-7xl mx-auto w-full px-4 sm:px-6 pt-8 pb-4">
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="stamp text-forest text-sm shrink-0">iPlanner</div>
+        <div class="min-w-0">
+          <h1 class="font-display text-2xl sm:text-3xl font-semibold text-ink dark:text-slate-100 leading-tight">iPlanner</h1>
+          <p class="text-ink-500 dark:text-slate-400 text-sm mt-0.5">G3 APPs</p>
+        </div>
+      </div>
+      <button id="darkModeToggle" type="button" title="Toggle dark mode"
+        class="shrink-0 min-w-[44px] min-h-[44px] rounded-full border border-paper-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-paper-100 dark:hover:bg-slate-700 flex items-center justify-center">
+        <svg id="iconMoon" class="w-5 h-5 text-ink dark:text-slate-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg id="iconSun" class="hidden w-5 h-5 text-ink dark:text-slate-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ Main dual-column layout ============ -->
+  <main class="no-print flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 pb-28 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
+
+    <!-- LEFT: metadata + framework -->
+    <section aria-label="Lesson details" class="lg:sticky lg:top-[64px] space-y-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:pr-1">
+
+      <div class="stage-card rounded-2xl p-5">
+        <h2 class="font-display text-lg font-semibold mb-4">Lesson details</h2>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="col-span-2 text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+            Teacher name
+            <input id="teacherName" type="text" placeholder="e.g. Mrs. Nadira Elmharour"
+              class="mt-1 w-full min-h-[42px] rounded-lg border border-paper-200 bg-paper-100 px-3 text-sm text-ink font-body normal-case focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-700" />
+          </label>
+          <label class="col-span-2 text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+            School name
+            <input id="schoolName" type="text" placeholder="e.g. Ibn Albannae High School"
+              class="mt-1 w-full min-h-[42px] rounded-lg border border-paper-200 bg-paper-100 px-3 text-sm text-ink font-body normal-case focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-700" />
+          </label>
+          <label class="text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+            Date
+            <input id="lessonDate" type="date"
+              class="mt-1 w-full min-h-[42px] rounded-lg border border-paper-200 bg-paper-100 px-3 text-sm text-ink font-body focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-700" />
+          </label>
+          <label class="text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+            Duration (mins)
+            <input id="lessonDuration" type="number" min="5" max="180" step="5" value="60"
+              class="mt-1 w-full min-h-[42px] rounded-lg border border-paper-200 bg-paper-100 px-3 text-sm text-ink font-mono focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-700" />
+          </label>
+          <label class="col-span-2 text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+            Lesson topic / title
+            <input id="lessonTopic" type="text" placeholder="e.g. Renewable Energy — Reading & Discussion"
+              class="mt-1 w-full min-h-[42px] rounded-lg border border-paper-200 bg-paper-100 px-3 text-sm text-ink font-body normal-case focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-700" />
+          </label>
+
+          <label class="col-span-2 text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+            Level
+            <select id="levelSelect" class="field-select mt-1 w-full min-h-[42px] rounded-lg border border-paper-200 bg-paper-100 px-3 text-sm text-ink font-body normal-case focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-700">
+              <optgroup label="Middle School">
+                <option value="1st Year MS (7th Grade)">1st Year MS (7th Grade)</option>
+                <option value="2nd Year MS (8th Grade)">2nd Year MS (8th Grade)</option>
+                <option value="3rd Year MS (9th Grade)">3rd Year MS (9th Grade)</option>
+              </optgroup>
+              <optgroup label="High School">
+                <option value="Common Core (Tronc Commun)">Common Core (Tronc Commun)</option>
+                <option value="1st Year Bac">1st Year Bac</option>
+                <option value="2nd Year Bac">2nd Year Bac</option>
+              </optgroup>
+            </select>
+          </label>
+
+          <label class="col-span-2 text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+            Primary skill
+            <select id="skillSelect" class="field-select mt-1 w-full min-h-[42px] rounded-lg border border-paper-200 bg-paper-100 px-3 text-sm text-ink font-body normal-case focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-700">
+              <option>Reading</option>
+              <option>Listening</option>
+              <option>Speaking</option>
+              <option>Writing</option>
+              <option>Grammar</option>
+              <option>Vocabulary</option>
+              <option>Functions</option>
+              <option>Integrated Skills</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="stage-card rounded-2xl p-5">
+        <h2 class="font-display text-lg font-semibold mb-1">Lesson objective</h2>
+        <p class="text-xs text-ink-500 dark:text-slate-400 mb-3">Fill the blanks — the SWBAT statement below writes itself.</p>
+        <div id="objectiveFieldsWrap" class="space-y-3"></div>
+        <div class="mt-4">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">Compiled objective</span>
+            <div class="flex items-center gap-1">
+              <button id="objectiveRegenBtn" type="button" title="Regenerate from fields" class="min-h-[28px] px-2 rounded text-xs font-medium text-ink-500 dark:text-slate-400 hover:text-forest hover:bg-forest/5">↻ Regenerate</button>
+              <button id="objectiveCopyBtn" type="button" title="Copy to clipboard" class="min-h-[28px] px-2 rounded text-xs font-medium text-forest hover:bg-forest/5 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </button>
+            </div>
+          </div>
+          <textarea id="objectiveTextarea" rows="3" placeholder="By the end of the lesson, SWBAT…"
+            class="w-full rounded-lg border border-paper-200 dark:border-slate-700 bg-paper-100 dark:bg-slate-900 p-3 text-sm leading-relaxed focus:bg-white dark:focus:bg-slate-700 resize-y"></textarea>
+        </div>
+      </div>
+
+      <div class="stage-card rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-1">
+          <h2 class="font-display text-lg font-semibold">Framework</h2>
+          <button id="frameworkInfoBtn" type="button"
+            class="hidden items-center gap-1 text-xs font-mono text-forest hover:text-forest-600 min-h-[32px] px-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            Learn more
+          </button>
+        </div>
+        <select id="frameworkSelect" class="field-select w-full min-h-[46px] rounded-lg border border-paper-200 bg-paper-100 px-3 text-sm font-body focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-700">
+          <option value="">— Choose a framework —</option>
+          <option value="MARC">MARC Model (Designed by Teacher) ⓘ</option>
+          <option value="PPP">PPP — Presentation ➔ Practice ➔ Production</option>
+          <option value="ECRIF">ECRIF — Encounter ➔ Clarify ➔ Remember ➔ Internalize ➔ Fluency</option>
+          <option value="PDP">PDP — Receptive / Productive Skills (Pre ➔ During ➔ Post)</option>
+        </select>
+
+        <div id="pdpSkillWrap" class="hidden mt-3">
+          <label class="text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+            PDP skill focus
+            <select id="pdpSkillSelect" class="field-select mt-1 w-full min-h-[42px] rounded-lg border border-paper-200 bg-paper-100 px-3 text-sm font-body normal-case focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-700">
+              <option value="Reading">Reading — Pre / During / Post-Reading</option>
+              <option value="Listening">Listening — Pre / During / Post-Listening</option>
+              <option value="Speaking">Speaking — Pre / During / Post-Task</option>
+              <option value="Writing">Writing (PDRE) — Prepare / Draft / Revise / Edit</option>
+            </select>
+          </label>
+        </div>
+
+        <p id="frameworkBlurb" class="hidden mt-3 text-xs text-ink-500 leading-relaxed bg-paper-100 border border-paper-200 rounded-lg p-3 dark:text-slate-400 dark:bg-slate-800 dark:border-slate-700"></p>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <button id="exportJsonBtn" type="button" class="min-h-[44px] rounded-lg border border-ink/15 bg-white hover:bg-paper-100 text-sm font-medium px-4 flex items-center justify-center gap-2 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+          Export template (JSON)
+        </button>
+        <label class="min-h-[44px] rounded-lg border border-ink/15 bg-white hover:bg-paper-100 text-sm font-medium px-4 flex items-center justify-center gap-2 cursor-pointer dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21V9m0 0l-4 4m4-4l4 4M4 3h16"/></svg>
+          Import template (JSON)
+          <input id="importJsonInput" type="file" accept="application/json" class="hidden" />
+        </label>
+        <button id="resetBtn" type="button" class="min-h-[44px] rounded-lg text-sm font-medium px-4 flex items-center justify-center gap-2 text-brick hover:bg-brick/5">
+          Clear this plan
+        </button>
+      </div>
+    </section>
+
+    <!-- RIGHT: stages -->
+    <section aria-label="Lesson stages">
+      <div id="emptyState" class="stage-card rounded-2xl p-10 text-center">
+        <p class="font-display text-xl mb-1">No framework selected yet</p>
+        <p class="text-ink-500 text-sm dark:text-slate-400">Choose a framework on the left and your stages will appear here, ready to fill in.</p>
+      </div>
+      <div id="stagesList" class="space-y-4"></div>
+      <button id="addCustomStageBtn" class="hidden mt-2 min-h-[46px] w-full rounded-xl border-2 border-dashed border-ink/15 text-ink-500 hover:border-forest hover:text-forest text-sm font-medium dark:border-slate-600 dark:text-slate-400">
+        + Add a custom stage
+      </button>
+    </section>
+  </main>
+
+  <!-- ============ Bottom action toolbar ============ -->
+  <footer class="no-print sticky bottom-0 z-30 bg-paper dark:bg-slate-900 backdrop-blur border-t border-paper-200 dark:border-slate-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-end gap-2">
+      <button id="contactBtn" type="button" title="Contact & Support"
+        class="min-h-[46px] rounded-lg border border-paper-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-paper-100 dark:hover:bg-slate-700 text-sm font-medium px-4 flex items-center gap-2 mr-auto">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z" opacity="0"/><path d="M3 7l9 6 9-6M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z"/></svg>
+        Contact &amp; Support
+      </button>
+      <label class="text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400 flex items-center gap-2">
+        PDF theme
+        <select id="pdfThemeSelect" class="field-select min-h-[42px] rounded-lg border border-paper-200 dark:border-slate-700 bg-paper-100 dark:bg-slate-800 px-3 text-sm font-body normal-case text-ink dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700">
+          <option value="emerald">Emerald &amp; Sage</option>
+          <option value="slateGold">Slate &amp; Gold</option>
+          <option value="royalPlum">Royal Plum</option>
+          <option value="terracotta">Terracotta</option>
+          <option value="grayscale">Minimalist Grayscale</option>
+        </select>
+      </label>
+      <button id="printBtn" type="button" class="min-h-[46px] rounded-lg bg-forest hover:bg-forest-600 text-white text-sm font-semibold px-5 flex items-center gap-2">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
+        Export polished PDF
+      </button>
+    </div>
+  </footer>
+</div>
+
+<!-- ============ Framework info modal ============ -->
+<div id="frameworkModal" class="no-print fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
+  <div class="bg-paper max-w-lg w-full rounded-2xl p-6 stage-card max-h-[85vh] overflow-y-auto dark:bg-slate-900">
+    <div class="flex items-start justify-between gap-4 mb-3">
+      <h3 id="frameworkModalTitle" class="font-display text-xl font-semibold"></h3>
+      <button id="frameworkModalClose" class="min-w-[36px] min-h-[36px] rounded-full hover:bg-paper-100 flex items-center justify-center shrink-0 dark:hover:bg-slate-700">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="frameworkModalBody" class="text-sm text-ink-700 leading-relaxed space-y-3 dark:text-slate-300"></div>
+    <a id="frameworkModalLink" href="#" target="_blank" rel="noopener" class="inline-flex items-center gap-1 mt-4 text-sm font-medium text-forest hover:text-forest-600">
+      Read the full article
+      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
+    </a>
+  </div>
+</div>
+
+<!-- ============ Preset activity library modal ============ -->
+<div id="presetModal" class="no-print fixed inset-0 z-50 hidden items-end sm:items-center justify-center modal-backdrop">
+  <div class="bg-paper w-full sm:max-w-xl sm:rounded-2xl rounded-t-2xl p-5 sm:p-6 stage-card max-h-[85vh] overflow-y-auto dark:bg-slate-900">
+    <div class="flex items-start justify-between gap-4 mb-1">
+      <div>
+        <h3 class="font-display text-xl font-semibold">Activity library</h3>
+        <p id="presetStageLabel" class="text-xs text-ink-500 font-mono uppercase tracking-wide dark:text-slate-400"></p>
+      </div>
+      <button id="presetModalClose" class="min-w-[36px] min-h-[36px] rounded-full hover:bg-paper-100 flex items-center justify-center shrink-0 dark:hover:bg-slate-700">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="presetTabs" class="flex flex-wrap gap-1.5 mt-4 mb-4"></div>
+    <div id="presetList" class="space-y-2"></div>
+  </div>
+</div>
+
+<!-- ============ Contact & Support modal ============ -->
+<div id="contactModal" class="no-print fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
+  <div class="bg-paper dark:bg-slate-800 max-w-sm w-full rounded-2xl p-6 stage-card">
+    <div class="flex items-start justify-between gap-4 mb-3">
+      <h3 class="font-display text-xl font-semibold text-ink dark:text-slate-100">Contact &amp; Support</h3>
+      <button id="contactModalClose" class="min-w-[36px] min-h-[36px] rounded-full hover:bg-paper-100 dark:hover:bg-slate-700 flex items-center justify-center shrink-0">
+        <svg class="w-5 h-5 text-ink dark:text-slate-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="text-sm text-ink-500 dark:text-slate-400 leading-relaxed mb-4">
+      Questions, bug reports, or feature ideas? Reach out any time — iPlanner is built by a fellow teacher and every message helps.
+    </p>
+    <a href="mailto:ali.bikourne1@gmail.com?subject=iPlanner%20feedback"
+      class="min-h-[46px] rounded-lg bg-forest hover:bg-forest-600 text-white text-sm font-semibold px-5 flex items-center justify-center gap-2">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9 6 9-6M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z"/></svg>
+      Email ali.bikourne1@gmail.com
+    </a>
+  </div>
+</div>
+
+<!-- ============ PRINT-ONLY clean sheet (populated by JS just before printing) ============ -->
+<div id="printSheet"></div>
+
+<script>
+/* ======================================================================
+   iPlanner (G3 APPs) — app logic (vanilla JS, zero backend)
+   ====================================================================== */
+
+const STORAGE_KEY = 'lessonPlanDesk.v1';
+const THEME_KEY = 'iplanner.theme';
+const PDF_THEME_KEY = 'iplanner.pdfTheme';
+
+/* ---------------- Framework definitions ---------------- */
+const FRAMEWORKS = {
+  MARC: {
+    label: 'MARC Model',
+    designedByTeacher: true,
+    core: ['Meet', 'Absorb', 'Recall', 'Communicate'],
+    blurb: 'Meet ➔ Absorb ➔ Recall ➔ Communicate. A four-stage cycle for guiding learners from first contact with new language to independent use of it.',
+    modalBody: [
+      'The MARC Model walks students through four moves: they Meet the target language in context, Absorb its form and meaning, Recall it through low-stakes practice, and finally Communicate with it in a freer, more personal task.',
+      'It works well for vocabulary- or grammar-driven lessons where you want a clean line from noticing language to using it independently.'
+    ],
+    link: 'https://drive.google.com/file/d/18sdICkUjLb9vB1fX114BPJI1BDr9mDOw/view?usp=sharing'
+  },
+  PPP: {
+    label: 'PPP',
+    core: ['Presentation', 'Practice', 'Production'],
+    blurb: 'Presentation ➔ Practice ➔ Production. The classic controlled-to-free practice sequence for grammar and functional language.',
+    modalBody: [
+      'PPP is one of the oldest and most widely used ELT frameworks. The teacher first Presents new language in context, students then Practice it under controlled conditions (drills, gap-fills), and finally Produce it more freely in speaking or writing tasks.',
+      'It suits form-focused lessons — grammar points, functional phrases — where accuracy needs to be built before fluency.'
+    ],
+    link: 'https://www.google.com/search?q=PPP+presentation+practice+production+lesson+framework'
+  },
+  ECRIF: {
+    label: 'ECRIF',
+    core: ['Encounter', 'Clarify', 'Remember', 'Internalize', 'Fluency'],
+    blurb: 'Encounter ➔ Clarify ➔ Remember ➔ Internalize ➔ Fluency. A five-stage path from noticing language to using it fluently.',
+    modalBody: [
+      'Developed for CELTA/DELTA-style planning, ECRIF traces a learner\u2019s path in five moves: they Encounter language, the teacher helps Clarify meaning/form/pronunciation, students Remember it through retrieval practice, Internalize it via structured production, and build Fluency through freer communicative use.',
+      'It gives more granular checkpoints than PPP, which is useful for closely tracking how well a form has actually been learned before moving to freer practice.'
+    ],
+    link: 'https://www.google.com/search?q=ECRIF+framework+lesson+planning+ELT'
+  },
+  PDP: {
+    label: 'PDP — Receptive & Productive Skills',
+    blurb: 'Pre ➔ During ➔ Post. The standard skills-lesson shape, adapted to whichever skill is in focus.',
+    modalBody: [
+      'PDP (Pre / During / Post) is the standard shape for a skills-focused lesson. Before the main text or task, students are prepared — activating schema, pre-teaching key words, predicting content. During the text or task, they work with graded tasks (gist, then detail). After, they respond, analyse, or extend what they\u2019ve read, heard, said or written.',
+      'For writing specifically it commonly expands into Prepare ➔ Draft ➔ Revise ➔ Edit (PDRE), reflecting the recursive nature of the writing process.'
+    ],
+    link: 'https://www.google.com/search?q=pre+during+post+lesson+framework+reading+listening+speaking'
+  }
+};
+
+const PDP_STAGES = {
+  Reading:   ['Pre-Reading', 'During-Reading', 'Post-Reading'],
+  Listening: ['Pre-Listening', 'During-Listening', 'Post-Listening'],
+  Speaking:  ['Pre-Task', 'During-Task', 'Post-Task'],
+  Writing:   ['Prepare', 'Draft', 'Revise', 'Edit'],
+};
+
+const INTERACTIONS = [
+  { key: 'INDIV', label: '[Indiv]', title: 'Individual Work', tone: 'teal' },
+  { key: 'PAIR', label: '[Pair Work]', title: 'Pair / Group Work (SS ↔ SS)', tone: 'plum' },
+  { key: 'WHOLE', label: '[Whole Class]', title: 'Teacher to Whole Class (T ↔ SS)', tone: 'slate' },
+  { key: 'S2T', label: '[S ➔ T]', title: 'Student to Teacher', tone: 'amber' },
+  { key: 'SS2T', label: '[SS ➔ T]', title: 'Students to Teacher', tone: 'brick' },
+  { key: 'S2SS', label: '[S ➔ SS]', title: 'Student presenting/talking to Class/Group', tone: 'forest' },
+];
+const INTERACTION_MAP = Object.fromEntries(INTERACTIONS.map(i => [i.key, i]));
+
+// Older saved plans (before the interaction set was redesigned) used different keys.
+// Map them onto their closest new equivalent instead of silently dropping the data,
+// and strip anything unrecognized so lookups never hit `undefined`.
+const LEGACY_INTERACTION_MIGRATION = { 'T-SS': 'WHOLE', 'SS-SS': 'PAIR', 'S': 'INDIV', 'T': 'WHOLE' };
+function migrateStageInteractions(stages){
+  if (!Array.isArray(stages)) return stages;
+  stages.forEach(stage => {
+    if (!Array.isArray(stage.interactions)) { stage.interactions = []; return; }
+    const migrated = stage.interactions.map(k => LEGACY_INTERACTION_MIGRATION[k] || k);
+    stage.interactions = [...new Set(migrated)].filter(k => INTERACTION_MAP[k]);
+  });
+  return stages;
+}
+
+/* ---------------- Quick procedure snippets (1-click macros) ---------------- */
+const SNIPPETS = [
+  { label: '+ T monitors', text: 'Teacher monitors, manages time, and provides assistance as needed.' },
+  { label: '+ T facilitates', text: 'Teacher facilitates discussion and prompts students with guiding questions.' },
+  { label: '+ T corrects', text: 'Teacher conducts delayed error correction on the board.' },
+  { label: '+ SS read silently', text: 'Students read the text silently and independently.' },
+  { label: '+ SS read in pairs', text: 'Students read aloud in pairs, helping each other with pronunciation.' },
+  { label: '+ SS answer', text: 'Students write down their answers and compare with a partner.' },
+  { label: '+ SS drill', text: 'Students repeat the target expression chorally and individually.' },
+];
+
+/* ---------------- Smart lesson objective generator ---------------- */
+const OBJ_GRAMMAR_LIKE = {
+  fields: [
+    { key: 'target', label: 'Target structure / words', placeholder: 'e.g. the present perfect' },
+    { key: 'action', label: 'Action / function', placeholder: 'e.g. talk about past experiences' },
+    { key: 'context', label: 'Context / activity', placeholder: 'e.g. a pair-work interview' },
+  ],
+  build: v => `By the end of the lesson, SWBAT use ${v.target || '[target structure/words]'} to ${v.action || '[action/function]'} in ${v.context || '[context/activity]'}.`,
+};
+const OBJECTIVE_TEMPLATES = {
+  Grammar: OBJ_GRAMMAR_LIKE,
+  Vocabulary: OBJ_GRAMMAR_LIKE,
+  Functions: OBJ_GRAMMAR_LIKE,
+  'Integrated Skills': OBJ_GRAMMAR_LIKE,
+  Reading: {
+    fields: [
+      { key: 'title', label: 'Text title', placeholder: 'e.g. "The Last Tree"' },
+      { key: 'during', label: 'Main during-reading task', placeholder: 'e.g. answering gist & detail questions' },
+      { key: 'post', label: 'Post-reading task', placeholder: 'e.g. discussing the moral in groups' },
+    ],
+    build: v => `By the end of the lesson, SWBAT demonstrate understanding of the text '${v.title || '[text title]'}' by ${v.during || '[main during-reading task]'}, and then ${v.post || '[post-reading task]'}.`,
+  },
+  Listening: {
+    fields: [
+      { key: 'topic', label: 'Passage topic', placeholder: 'e.g. "Life in Antarctica"' },
+      { key: 'during', label: 'Main during-listening task', placeholder: 'e.g. filling in a gap-fill transcript' },
+      { key: 'post', label: 'Post-listening task', placeholder: 'e.g. summarising it to a partner' },
+    ],
+    build: v => `By the end of the lesson, SWBAT demonstrate understanding of the listening passage '${v.topic || '[passage topic]'}' by ${v.during || '[main during-listening task]'}, and then ${v.post || '[post-listening task]'}.`,
+  },
+  Writing: {
+    fields: [
+      { key: 'textType', label: 'Text type', placeholder: 'e.g. a formal email' },
+      { key: 'target', label: 'Target connectors / vocabulary / structure', placeholder: 'e.g. sequencing connectors' },
+    ],
+    build: v => `By the end of the lesson, SWBAT write ${v.textType || '[text type]'} using ${v.target || '[target connectors/vocabulary/structure]'}.`,
+  },
+  Speaking: {
+    fields: [
+      { key: 'activity', label: 'Activity type', type: 'select', options: ['discussion', 'interview', 'podcast', 'debate', 'roleplay'] },
+      { key: 'target', label: 'Target functional language', placeholder: 'e.g. expressions for agreeing/disagreeing' },
+    ],
+    build: v => `By the end of the lesson, SWBAT participate in a ${v.activity || '[discussion / interview / podcast / debate / roleplay]'} using ${v.target || '[target functional language]'}.`,
+  },
+};
+
+/* ---------------- Preset activity library ---------------- */
+const PRESETS = {
+  universal: { label: '🌟 Universal', items: [
+    { t: 'Brainstorming (Mind Map / Idea Web)', body: 'Brainstorming (Mind Map / Idea Web): T writes the central topic on the board. SS call out related words/ideas in open class or pairs, building a mind map of connected branches.' },
+    { t: 'Roleplay Exchange', body: 'Roleplay Exchange: T assigns two contrasting roles tied to the topic. SS act out a short exchange in pairs, then swap roles to experience the other perspective.' },
+    { t: 'Real-Life Simulation', body: 'Real-Life Simulation: T sets up a realistic scenario (e.g. ordering at a restaurant, booking a hotel). SS simulate the interaction in pairs/groups using target language from the lesson.' },
+    { t: 'Guided Paragraph Drafting', body: 'Guided Paragraph Drafting: T provides a topic sentence and a word bank. SS draft a short paragraph individually, applying at least 3 items from the bank.' },
+    { t: 'Dialogue Writing', body: 'Dialogue Writing: T models a short sample exchange. SS write their own dialogue in pairs using the target language, then read it aloud.' },
+    { t: 'Peer Review & Rewriting/Revising', body: 'Peer Review & Rewriting/Revising: SS swap their work with a partner, give feedback using a simple checklist, then revise their own piece based on the feedback received.' },
+  ]},
+  warmup: { label: 'Warm-Up', items: [
+    { t: 'Hangman Game', body: 'Hangman Game: T draws blank lines for the target word on the board. SS guess letters to reveal the secret topic word while reviewing spelling.' },
+    { t: 'Guess the Word / Taboo', body: 'Guess the Word / Taboo: T gives 3 clues or keywords. SS race in pairs to guess the hidden topic word.' },
+    { t: 'Prior Knowledge Review', body: 'Prior Knowledge Review: T asks "What did we cover last session?" SS brainstorm in pairs for 2 minutes and share key vocabulary/rules.' },
+    { t: 'Picture Prediction', body: "Picture Prediction: T displays an intriguing image. SS predict 3 things about today's lesson." },
+    { t: 'Think-Pair-Share', body: 'Think-Pair-Share (5 min): T poses a question linked to the topic. SS think alone (1 min), compare with a partner (2 min), then share with the class (2 min).' },
+    { t: 'Flashcard Flash', body: 'Flashcard Flash (5 min): T shows flashcards/images of key words. SS race in teams to call out the correct word.' },
+  ]},
+  reading: { label: 'Reading', items: [
+    { t: 'K-W-L Chart', body: 'K-W-L Chart: T draws 3 columns (Know / Want to know / Learned) on the board. SS fill "K" and "W" before reading in pairs, then complete "L" after reading.' },
+    { t: 'Running Dictation', body: 'Running Dictation: T pins text sections around the room. One SS runs to read/memorise a line and dictates it to a partner who writes it down; pairs race to reconstruct the full text accurately.' },
+    { t: 'Comprehension Questions', body: 'Comprehension Questions: T sets 4–5 graded questions (gist + detail). SS read the text silently and write answers, then peer-check.' },
+    { t: 'Information Chart Filling', body: 'Information Chart Filling: T provides a structured graphic organizer. SS scan the text to extract dates, names, causes, and effects.' },
+    { t: 'Info-Gap Reading', body: "Info-Gap Reading: T gives Text A to Student A and Text B to Student B. SS read individually, then ask questions to complete missing data without looking at each other's papers." },
+    { t: 'Jigsaw Reading', body: 'Jigsaw Reading: T assigns different text paragraphs to expert groups. SS master their part, then remix into new groups to present their section.' },
+    { t: 'Skimming/Scanning', body: 'Skimming/Scanning: T asks SS to skim for gist (1 min) — "What is this text about in one sentence?" — then scan for 3 specific details (names, dates, numbers).' },
+    { t: 'Prediction from Title/Images', body: 'Prediction from Title/Images: SS look only at the title/images and predict the content in pairs before reading to confirm or correct their guesses.' },
+    { t: 'True/False/Not Given', body: 'True/False/Not Given: SS read statements about the text and decide, with textual evidence, whether each is true, false, or not given.' },
+  ]},
+  listening: { label: 'Listening', items: [
+    { t: 'Predict then Confirm', body: 'Predict then Confirm: T plays 10 seconds or shows the title. SS predict the content, then listen once to confirm/adjust their guesses.' },
+    { t: 'Gap-Fill Dictation', body: 'Gap-Fill Dictation: T plays the audio track. SS complete the missing target words in a printed transcript, followed by pair verification.' },
+    { t: 'Listen & Sequence', body: 'Listen & Sequence: T provides scrambled events. SS listen and order the statements chronologically.' },
+    { t: 'Gist Listening', body: 'Gist Listening (first listen): SS listen once for the general idea only and answer one broad question (who/where/what).' },
+    { t: 'Dictogloss', body: 'Dictogloss: T reads/plays a short text at normal speed twice. SS take notes on key words only, then reconstruct the text in pairs as close to the original meaning as possible.' },
+    { t: 'Video Response Grid', body: 'Video Response Grid: T plays a short video clip with sound off first (SS predict), then with sound (SS fill a response grid: who/what/where/feeling).' },
+  ]},
+  speaking: { label: 'Speaking', items: [
+    { t: '4-3-2 Technique', body: 'The 4-3-2 Technique: SS talk to a partner on the same topic for 4 minutes, then find a new partner and repeat in 3 minutes, then again in 2 minutes — building fluency and confidence through repetition with decreasing time.' },
+    { t: 'Find Someone Who', body: 'Find Someone Who: T gives SS a grid of prompts (e.g. "find someone who has traveled abroad"). SS mingle, asking classmates questions to fill in names, then report back.' },
+    { t: 'Speed Geeking', body: 'Speed Geeking: SS prepare a mini-presentation at their desk/station. In rotating small groups, SS present to each new group for a set time (e.g. 3 min) before rotating to the next station.' },
+    { t: 'Roleplay Simulation', body: 'Roleplay Simulation: T distributes role cards setting up a real-life situation (e.g. job interview, complaining at a shop). SS rehearse in pairs using target functional expressions, then perform for the class.' },
+    { t: 'Debate / Opinion Line', body: 'Debate / Opinion Line: T presents a controversial prompt. SS line up based on agreement level and debate opposing views using target phrases.' },
+    { t: 'Information Gap Interview', body: 'Information Gap Interview: SS conduct a survey/interview with 3 peers to gather information and report findings back to the class.' },
+    { t: 'Discussion Circles', body: 'Discussion Circles: In groups of 4, SS discuss guided questions on the topic, with one student as timekeeper/reporter.' },
+    { t: 'Fishbowl Discussion', body: 'Fishbowl Discussion: An inner circle of SS discusses the topic while an outer circle observes and takes notes, then groups swap roles and compare observations.' },
+    { t: 'Hot Seat', body: 'Hot Seat: One student sits facing the class (away from the board). T/SS write a word or write on the board; classmates give clues without saying the word so the "hot seat" student can guess it.' },
+  ]},
+  writing: { label: 'Writing', items: [
+    { t: 'Essay Frames', body: 'Essay Frames: T provides a skeleton essay with sentence starters and connectors for each paragraph (intro/body/conclusion). SS complete the frame with their own ideas.' },
+    { t: 'Guided Paragraph / Frame', body: 'Guided Paragraph / Frame: T models a text structure with a word bank. SS draft a structured paragraph applying target linking words.' },
+    { t: 'Peer Editing Checklist', body: 'Peer Editing Checklist: SS swap writing drafts and evaluate using a 4-point checklist (Topic sentence, Connectors, Grammar, Punctuation).' },
+    { t: 'Sentence Combining', body: 'Sentence Combining: T gives a set of short simple sentences. SS combine them into 2–3 more complex sentences using connectors.' },
+    { t: 'Model Text Analysis', body: 'Model Text Analysis: SS read a model text and highlight its structure (intro/body/conclusion) before drafting their own.' },
+    { t: 'Free Writing / Journaling', body: 'Free Writing / Journaling: T gives a prompt and a fixed time (e.g. 5 min). SS write continuously without stopping to correct, prioritising fluency of ideas over accuracy.' },
+    { t: 'Peer Dictation', body: 'Peer Dictation: In pairs, SS take turns reading a short prepared sentence/paragraph aloud for their partner to write down, then check spelling and punctuation together.' },
+  ]},
+  grammar: { label: 'Grammar', items: [
+    { t: 'Error Analysis', body: "Error Analysis: T presents a short text or set of sentences containing common mistakes. SS work in pairs to identify each error, explain why it's wrong, and correct it, discussing the underlying rule." },
+    { t: 'Gap-Filling', body: 'Gap-Filling: T provides contextualized sentences with blank spaces. SS choose the correct forms using the target rules.' },
+    { t: 'Sentence Completion', body: 'Sentence Completion: T provides sentence starters. SS complete them meaningfully using the target grammar.' },
+    { t: 'Put Verbs in Correct Form', body: 'Put Verbs in Correct Form: T presents a short passage with base verbs in brackets. SS conjugate the verbs based on time markers.' },
+    { t: 'Circle Correct Answer / MCQ', body: 'Circle Correct Answer / Multiple Choice: SS analyze sentence options, circle the correct choices, and justify their answers in pairs.' },
+    { t: 'Matching Exercise', body: 'Matching Exercise: SS match sentence halves or rules to examples on a worksheet.' },
+    { t: 'Concept Checking Questions', body: 'CCQs: T asks 3–4 targeted concept-checking questions to confirm SS understand the meaning of the target structure before practice.' },
+    { t: 'Board Work / Timeline', body: 'Board Work / Timeline: T draws a timeline or sentence diagram on the board to visually clarify the form/meaning of the target structure.' },
+    { t: 'Error Correction Race', body: 'Error Correction Race: In teams, SS find and correct grammar errors planted in a short text as fast as possible.' },
+    { t: 'Grammar Auction', body: "Grammar Auction: T gives teams a fixed budget and a list of sentences (some correct, some incorrect). Teams 'bid' on sentences they believe are grammatically correct; the team with the most correct sentences (and money left) wins." },
+    { t: 'Inductive Rule Discovery', body: 'Inductive Rule Discovery: T presents several example sentences containing the target structure without explanation. SS work in pairs to notice the pattern and formulate the rule themselves before T confirms it.' },
+  ]},
+  vocabulary: { label: 'Vocabulary', items: [
+    { t: 'Word Family Matrix', body: 'Word Family Matrix: T presents a grid of root words with columns for Noun/Verb/Adjective/Adverb forms. SS complete the matrix, then use 2–3 forms in original sentences.' },
+    { t: 'Word Form Transformation', body: 'Word Form Transformation: T presents a table (Noun, Verb, Adjective). SS transform target root words into the correct parts of speech.' },
+    { t: 'Collocation Matching', body: "Collocation Matching: SS match verb-noun or adjective-noun pairs (e.g. 'make progress', 'pay attention') and write original sentences." },
+    { t: 'Odd One Out', body: 'Odd One Out: SS analyze groups of 4 words, identify the outlier, and explain the semantic reasoning.' },
+    { t: 'Word Wall / Matching', body: 'Word Wall / Matching: SS match new words to definitions/images in pairs, then check together as a class.' },
+    { t: 'Word Map', body: 'Word Map: For each key word, SS note a synonym, an antonym, and one collocation in a simple 3-box map.' },
+    { t: 'Vocabulary Bingo', body: 'Vocabulary Bingo: SS fill a 3x3/4x4 grid with target words. T calls out definitions/synonyms; SS cross off the matching word until someone completes a line.' },
+    { t: 'Definition Race', body: 'Definition Race: In teams, T reads a definition aloud. SS race to write/shout the correct target word first to earn a point for their team.' },
+  ]},
+  functions: { label: 'Functions', items: [
+    { t: 'Functional Role Cards', body: 'Role Cards: Give pairs cue cards with a function (e.g. making suggestions, complaining, apologising) to act out using target phrases.' },
+    { t: 'Dialogue Building', body: 'Dialogue Building: As a class, build a model dialogue on the board using the target function, then Ss personalise it in pairs.' },
+    { t: 'Situational Cue Cards', body: 'Situational Cues: Ss draw a situation card and produce an appropriate functional exchange with a partner on the spot.' },
+  ]},
+  closure: { label: 'Closure', items: [
+    { t: 'Exit Ticket', body: 'Exit Ticket: Ss write one thing they learned and one question they still have on a slip before leaving.' },
+    { t: 'One-Word Summary', body: 'One-Word Round: Going round the room, each student says one word that sums up today\u2019s lesson.' },
+    { t: 'Homework Assignment', body: 'Homework: Assign a short follow-up task (e.g. write 5 sentences using today\u2019s target language) and confirm the due date.' },
+    { t: 'Quick Recap Q&A', body: 'Quick Recap: Cold-call 3–4 Ss with a fast review question each to check retention before dismissing the class.' },
+  ]},
+  general: { label: 'General', items: [
+    { t: 'Mini Whiteboard Check', body: 'Mini Whiteboard Check: Ss write a quick answer on individual whiteboards and hold them up together so you can check understanding at a glance.' },
+    { t: 'Think-Pair-Share Reflection', body: 'Reflection: Ss think individually, then discuss with a partner what was easiest/hardest about this stage.' },
+    { t: 'Quick Recap Q&A', body: 'Quick Recap: Ask 3 rapid-fire questions reviewing the previous stage before moving on.' },
+  ]},
+};
+
+function categoryForStage(stageName){
+  const n = stageName.toLowerCase();
+  if (n.includes('warm')) return 'warmup';
+  if (n.includes('clos') || n.includes('homework')) return 'closure';
+  if (n.includes('read')) return 'reading';
+  if (n.includes('listen')) return 'listening';
+  if (n.includes('speak') || n.includes('task') || n.includes('fluency') || n.includes('communicate')) return 'speaking';
+  if (n.includes('writ') || n.includes('draft') || n.includes('revise') || n.includes('edit') || n.includes('prepare')) return 'writing';
+  return 'general';
+}
+
+/* ---------------- State ---------------- */
+let state = loadState() || defaultState();
+
+function defaultState(){
+  return {
+    meta: {
+      teacherName: '', schoolName: '', date: '', duration: 60,
+      topic: '', level: '1st Year MS (7th Grade)', skill: 'Reading',
+    },
+    framework: '', pdpSkill: 'Reading',
+    stages: [],
+    objective: { values: {}, text: '', manualEdit: false },
+  };
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.meta || !Array.isArray(parsed.stages)) return null;
+    if (!parsed.objective) parsed.objective = { values: {}, text: '', manualEdit: false };
+    migrateStageInteractions(parsed.stages);
+    return parsed;
+  }catch(e){ return null; }
+}
+
+let saveTimer = null;
+function saveState(){
+  const indicator = document.getElementById('saveIndicator');
+  indicator.textContent = 'Saving…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    indicator.innerHTML = '<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Saved';
+  }, 350);
+}
+
+let idCounter = 1;
+function newId(){ return 'stg' + (idCounter++) + '_' + Math.random().toString(36).slice(2,7); }
+
+/* ---------------- Building stages from a framework ---------------- */
+function stagesForFramework(fw, pdpSkill){
+  let core = [];
+  if (fw === 'PDP') core = PDP_STAGES[pdpSkill] || PDP_STAGES.Reading;
+  else if (FRAMEWORKS[fw]) core = FRAMEWORKS[fw].core;
+  if (!core.length) return [];
+  const names = ['Warm-Up', ...core, 'Closure / Homework'];
+  return names.map(name => ({
+    id: newId(), name, duration: 10, interactions: [], notes: '', locked: (name === 'Warm-Up' || name === 'Closure / Homework'),
+  }));
+}
+
+/* ---------------- DOM refs ---------------- */
+const el = (id) => document.getElementById(id);
+const teacherNameI = el('teacherName'), schoolNameI = el('schoolName'), lessonDateI = el('lessonDate'),
+      lessonDurationI = el('lessonDuration'), lessonTopicI = el('lessonTopic'),
+      levelSelect = el('levelSelect'), skillSelect = el('skillSelect'),
+      frameworkSelect = el('frameworkSelect'), pdpSkillWrap = el('pdpSkillWrap'), pdpSkillSelect = el('pdpSkillSelect'),
+      frameworkBlurb = el('frameworkBlurb'), frameworkInfoBtn = el('frameworkInfoBtn'),
+      stagesList = el('stagesList'), emptyState = el('emptyState'), addCustomStageBtn = el('addCustomStageBtn'),
+      targetMinLabel = el('targetMinLabel'), allocatedLabel = el('allocatedLabel'), timerFill = el('timerFill'), timerFlag = el('timerFlag'),
+      objectiveFieldsWrap = el('objectiveFieldsWrap'), objectiveTextarea = el('objectiveTextarea'),
+      objectiveCopyBtn = el('objectiveCopyBtn'), objectiveRegenBtn = el('objectiveRegenBtn'),
+      pdfThemeSelect = el('pdfThemeSelect');
+
+/* ---------------- Populate form from state ---------------- */
+function hydrateForm(){
+  teacherNameI.value = state.meta.teacherName;
+  schoolNameI.value = state.meta.schoolName;
+  lessonDateI.value = state.meta.date;
+  lessonDurationI.value = state.meta.duration;
+  lessonTopicI.value = state.meta.topic;
+  levelSelect.value = state.meta.level;
+  skillSelect.value = state.meta.skill;
+  frameworkSelect.value = state.framework;
+  pdpSkillSelect.value = state.pdpSkill;
+  updateFrameworkUI();
+  renderStages();
+  updateTimerBar();
+  renderObjectiveFields();
+  pdfThemeSelect.value = localStorage.getItem(PDF_THEME_KEY) || 'emerald';
+}
+
+/* ---------------- Meta field bindings ---------------- */
+function bindMeta(input, key, transform){
+  input.addEventListener('input', () => {
+    state.meta[key] = transform ? transform(input.value) : input.value;
+    if (key === 'duration') updateTimerBar();
+    saveState();
+  });
+}
+bindMeta(teacherNameI, 'teacherName');
+bindMeta(schoolNameI, 'schoolName');
+bindMeta(lessonDateI, 'date');
+bindMeta(lessonDurationI, 'duration', v => parseInt(v || '0', 10));
+bindMeta(lessonTopicI, 'topic');
+levelSelect.addEventListener('change', () => { state.meta.level = levelSelect.value; saveState(); });
+skillSelect.addEventListener('change', () => {
+  state.meta.skill = skillSelect.value;
+  state.objective = { values: {}, text: '', manualEdit: false };
+  renderObjectiveFields();
+  saveState();
+});
+
+/* ---------------- Framework selection ---------------- */
+frameworkSelect.addEventListener('change', () => {
+  state.framework = frameworkSelect.value;
+  if (state.framework === 'PDP') pdpSkillWrap.classList.remove('hidden');
+  else pdpSkillWrap.classList.add('hidden');
+  updateFrameworkUI();
+  if (state.framework) {
+    state.stages = stagesForFramework(state.framework, state.pdpSkill);
+  } else {
+    state.stages = [];
+  }
+  renderStages();
+  updateTimerBar();
+  saveState();
+});
+pdpSkillSelect.addEventListener('change', () => {
+  state.pdpSkill = pdpSkillSelect.value;
+  if (state.framework === 'PDP') {
+    state.stages = stagesForFramework('PDP', state.pdpSkill);
+    renderStages();
+    updateTimerBar();
+    saveState();
+  }
+});
+
+function updateFrameworkUI(){
+  const fw = FRAMEWORKS[state.framework];
+  pdpSkillWrap.classList.toggle('hidden', state.framework !== 'PDP');
+  if (!fw) {
+    frameworkBlurb.classList.add('hidden');
+    frameworkInfoBtn.classList.add('hidden');
+    frameworkInfoBtn.classList.remove('flex');
+    return;
+  }
+  frameworkBlurb.classList.remove('hidden');
+  const designedTag = fw.designedByTeacher ? ' <span class="text-forest font-semibold">(Designed by Teacher)</span>' : '';
+  frameworkBlurb.innerHTML = '<strong class="font-display text-ink dark:text-slate-100">' + fw.label + '</strong>' + designedTag + '<br/>' + fw.blurb;
+  frameworkInfoBtn.classList.remove('hidden');
+  frameworkInfoBtn.classList.add('flex');
+}
+
+/* ---------------- Framework info modal ---------------- */
+const frameworkModal = el('frameworkModal');
+frameworkInfoBtn.addEventListener('click', () => {
+  const fw = FRAMEWORKS[state.framework];
+  if (!fw) return;
+  el('frameworkModalTitle').textContent = fw.label + (fw.designedByTeacher ? ' (Designed by Teacher)' : '');
+  el('frameworkModalBody').innerHTML = fw.modalBody.map(p => '<p>' + p + '</p>').join('');
+  el('frameworkModalLink').href = fw.link;
+  frameworkModal.classList.remove('hidden');
+  frameworkModal.classList.add('flex');
+});
+el('frameworkModalClose').addEventListener('click', () => closeModal(frameworkModal));
+frameworkModal.addEventListener('click', (e) => { if (e.target === frameworkModal) closeModal(frameworkModal); });
+function closeModal(m){ m.classList.add('hidden'); m.classList.remove('flex'); }
+
+/* ---------------- Smart lesson objective generator ---------------- */
+function objectiveTemplateForSkill(){
+  return OBJECTIVE_TEMPLATES[state.meta.skill] || OBJ_GRAMMAR_LIKE;
+}
+
+function renderObjectiveFields(){
+  const tpl = objectiveTemplateForSkill();
+  objectiveFieldsWrap.innerHTML = tpl.fields.map(f => {
+    const val = state.objective.values[f.key] || '';
+    if (f.type === 'select') {
+      const opts = f.options.map(o => `<option value="${o}" ${o === val ? 'selected' : ''}>${o.charAt(0).toUpperCase() + o.slice(1)}</option>`).join('');
+      return `<label class="block text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+        ${f.label}
+        <select data-obj-field="${f.key}" class="field-select mt-1 w-full min-h-[40px] rounded-lg border border-paper-200 dark:border-slate-700 bg-paper-100 dark:bg-slate-900 px-3 text-sm font-body normal-case text-ink dark:text-slate-100 focus:bg-white dark:focus:bg-slate-700">
+          <option value="">— choose —</option>${opts}
+        </select>
+      </label>`;
+    }
+    return `<label class="block text-xs font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">
+      ${f.label}
+      <input data-obj-field="${f.key}" type="text" value="${escapeHtml(val)}" placeholder="${escapeHtml(f.placeholder || '')}"
+        class="mt-1 w-full min-h-[40px] rounded-lg border border-paper-200 dark:border-slate-700 bg-paper-100 dark:bg-slate-900 px-3 text-sm text-ink dark:text-slate-100 font-body normal-case focus:bg-white dark:focus:bg-slate-700" />
+    </label>`;
+  }).join('');
+
+  objectiveFieldsWrap.querySelectorAll('[data-obj-field]').forEach(input => {
+    input.addEventListener('input', () => {
+      state.objective.values[input.dataset.objField] = input.value;
+      recomputeObjective();
+    });
+  });
+
+  if (!state.objective.text) recomputeObjective();
+  else objectiveTextarea.value = state.objective.text;
+}
+
+function recomputeObjective(){
+  const tpl = objectiveTemplateForSkill();
+  const text = tpl.build(state.objective.values);
+  if (!state.objective.manualEdit) {
+    state.objective.text = text;
+    objectiveTextarea.value = text;
+  }
+  saveState();
+}
+
+objectiveTextarea.addEventListener('input', () => {
+  state.objective.manualEdit = true;
+  state.objective.text = objectiveTextarea.value;
+  saveState();
+});
+
+objectiveRegenBtn.addEventListener('click', () => {
+  state.objective.manualEdit = false;
+  recomputeObjective();
+});
+
+objectiveCopyBtn.addEventListener('click', async () => {
+  try{
+    await navigator.clipboard.writeText(objectiveTextarea.value);
+    const original = objectiveCopyBtn.innerHTML;
+    objectiveCopyBtn.innerHTML = '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Copied';
+    setTimeout(() => { objectiveCopyBtn.innerHTML = original; }, 1400);
+  }catch(e){
+    objectiveTextarea.select();
+    document.execCommand('copy');
+  }
+});
+
+/* ---------------- Stage rendering ---------------- */
+function renderStages(){
+  stagesList.innerHTML = '';
+  const has = state.stages.length > 0;
+  emptyState.classList.toggle('hidden', has);
+  addCustomStageBtn.classList.toggle('hidden', !state.framework);
+  addCustomStageBtn.classList.toggle('flex', !!state.framework);
+
+  state.stages.forEach((stage, idx) => {
+    stagesList.appendChild(renderStageCard(stage, idx));
+  });
+}
+
+function renderStageCard(stage, idx){
+  const wrap = document.createElement('article');
+  wrap.className = 'stage-card rounded-2xl p-4 sm:p-5';
+  wrap.dataset.id = stage.id;
+
+  const chipsHtml = INTERACTIONS.map(i => {
+    const active = stage.interactions.includes(i.key);
+    return `<button type="button" class="chip" data-tone="${i.tone}" data-active="${active}" data-chip="${i.key}" title="${i.title}">${i.label}</button>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="font-mono text-xs text-ink-500 shrink-0 dark:text-slate-400">${String(idx+1).padStart(2,'0')}</span>
+        <h3 class="font-display text-lg font-semibold truncate">${stage.name}</h3>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <label class="flex items-center gap-1 text-xs font-mono text-ink-500 dark:text-slate-400">
+          <input type="number" min="0" max="180" step="5" value="${stage.duration}" data-role="duration"
+            class="w-16 min-h-[38px] rounded-lg border border-paper-200 bg-paper-100 px-2 text-sm font-mono text-center focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-700" />
+          min
+        </label>
+        ${stage.locked ? '' : `<button type="button" data-role="remove" title="Remove stage" class="min-w-[38px] min-h-[38px] rounded-lg hover:bg-brick/10 text-brick flex items-center justify-center">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z"/></svg>
+        </button>`}
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2 mb-3" data-role="chips">${chipsHtml}</div>
+
+    <textarea data-role="notes" rows="3" placeholder="What happens in this stage? Click 'Insert activity' for a ready-made starter, or type your own."
+      class="stage-notes w-full rounded-lg border border-paper-200 bg-paper-100 p-3 text-sm leading-relaxed focus:bg-white resize-y dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-700">${escapeHtml(stage.notes)}</textarea>
+
+    <div class="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1" data-role="snippets">
+      ${SNIPPETS.map((s, i) => `<button type="button" data-snip="${i}" class="snippet-pill shrink-0">${escapeHtml(s.label)}</button>`).join('')}
+    </div>
+
+    <button type="button" data-role="preset" class="mt-2 min-h-[40px] inline-flex items-center gap-2 text-sm font-medium text-forest hover:text-forest-600 px-3 rounded-lg hover:bg-forest/5">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+      Insert activity
+    </button>
+  `;
+
+  // Chip toggles
+  wrap.querySelectorAll('[data-chip]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.chip;
+      const i = stage.interactions.indexOf(key);
+      if (i >= 0) stage.interactions.splice(i, 1); else stage.interactions.push(key);
+      const active = stage.interactions.includes(key);
+      btn.dataset.active = active;
+      saveState();
+    });
+  });
+
+  // Duration
+  wrap.querySelector('[data-role="duration"]').addEventListener('input', (e) => {
+    stage.duration = parseInt(e.target.value || '0', 10);
+    updateTimerBar();
+    saveState();
+  });
+
+  // Notes
+  wrap.querySelector('[data-role="notes"]').addEventListener('input', (e) => {
+    stage.notes = e.target.value;
+    saveState();
+  });
+
+  // Remove
+  const removeBtn = wrap.querySelector('[data-role="remove"]');
+  if (removeBtn) removeBtn.addEventListener('click', () => {
+    state.stages = state.stages.filter(s => s.id !== stage.id);
+    renderStages();
+    updateTimerBar();
+    saveState();
+  });
+
+  // Preset
+  wrap.querySelector('[data-role="preset"]').addEventListener('click', () => openPresetModal(stage));
+
+  // Quick procedure snippets
+  wrap.querySelectorAll('[data-snip]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const snippet = SNIPPETS[parseInt(btn.dataset.snip, 10)];
+      stage.notes = (stage.notes ? stage.notes.trim() + '\n' : '') + snippet.text;
+      wrap.querySelector('[data-role="notes"]').value = stage.notes;
+      saveState();
+    });
+  });
+
+  return wrap;
+}
+
+function escapeHtml(str){
+  return (str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------------- Add custom stage ---------------- */
+addCustomStageBtn.addEventListener('click', () => {
+  const name = prompt('Name this stage (e.g. "Extension Task"):');
+  if (!name || !name.trim()) return;
+  const stage = { id: newId(), name: name.trim(), duration: 10, interactions: [], notes: '', locked: false };
+  // insert before the closing stage if one exists
+  const closingIdx = state.stages.findIndex(s => s.name.toLowerCase().includes('closure'));
+  if (closingIdx >= 0) state.stages.splice(closingIdx, 0, stage);
+  else state.stages.push(stage);
+  renderStages();
+  updateTimerBar();
+  saveState();
+});
+
+/* ---------------- Timer bar ---------------- */
+function updateTimerBar(){
+  const target = parseInt(state.meta.duration || 0, 10);
+  const allocated = state.stages.reduce((sum, s) => sum + (parseInt(s.duration, 10) || 0), 0);
+  targetMinLabel.textContent = target + ' min';
+  allocatedLabel.textContent = allocated + ' min';
+  const pct = target > 0 ? Math.min(100, (allocated / target) * 100) : 0;
+  timerFill.style.width = pct + '%';
+  const over = target > 0 && allocated > target;
+  timerFill.classList.toggle('bg-forest', !over);
+  timerFill.classList.toggle('bg-brick', over);
+  timerFlag.classList.toggle('hidden', !over);
+}
+
+/* ---------------- Preset modal ---------------- */
+const presetModal = el('presetModal'), presetTabs = el('presetTabs'), presetList = el('presetList'), presetStageLabel = el('presetStageLabel');
+let activeStageForPreset = null;
+let activePresetCategory = 'general';
+
+function openPresetModal(stage){
+  activeStageForPreset = stage;
+  activePresetCategory = categoryForStage(stage.name);
+  presetStageLabel.textContent = 'For: ' + stage.name;
+  renderPresetTabs();
+  renderPresetItems();
+  presetModal.classList.remove('hidden');
+  presetModal.classList.add('flex');
+}
+el('presetModalClose').addEventListener('click', () => closeModal(presetModal));
+presetModal.addEventListener('click', (e) => { if (e.target === presetModal) closeModal(presetModal); });
+
+function renderPresetTabs(){
+  presetTabs.innerHTML = Object.keys(PRESETS).map(key => {
+    const active = key === activePresetCategory;
+    return `<button type="button" data-cat="${key}" class="px-3 py-1.5 rounded-full text-xs font-mono font-medium border min-h-[34px] ${active ? 'bg-forest text-white border-forest' : 'bg-paper-100 text-ink-500 border-paper-200 hover:border-forest'} dark:text-slate-400 dark:border-slate-700">${PRESETS[key].label}</button>`;
+  }).join('');
+  presetTabs.querySelectorAll('[data-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activePresetCategory = btn.dataset.cat;
+      renderPresetTabs();
+      renderPresetItems();
+    });
+  });
+}
+
+function renderPresetItems(){
+  const cat = PRESETS[activePresetCategory];
+  const showUniversal = activePresetCategory !== 'universal';
+  const combined = [];
+  if (showUniversal) PRESETS.universal.items.forEach(it => combined.push({ ...it, universal: true }));
+  cat.items.forEach(it => combined.push({ ...it, universal: false }));
+
+  let dividerInserted = !showUniversal;
+  presetList.innerHTML = combined.map((item, i) => {
+    let divider = '';
+    if (!dividerInserted && !item.universal) {
+      divider = `<div class="flex items-center gap-2 pt-2 pb-1">
+        <span class="flex-1 h-px bg-paper-200 dark:bg-slate-700"></span>
+        <span class="text-[10px] font-mono uppercase tracking-wide text-ink-500 dark:text-slate-400">${escapeHtml(cat.label)}-specific</span>
+        <span class="flex-1 h-px bg-paper-200 dark:bg-slate-700"></span>
+      </div>`;
+      dividerInserted = true;
+    }
+    const badge = item.universal ? '<span class="inline-block text-[9px] font-mono font-semibold text-amber-600 dark:text-amber-400 mr-1.5 align-middle">★ UNIVERSAL</span>' : '';
+    return `${divider}<button type="button" data-idx="${i}" class="w-full text-left rounded-xl border border-paper-200 bg-paper-100 hover:bg-white hover:border-forest p-3 transition-colors dark:border-slate-700 dark:bg-slate-800">
+      <span class="block font-medium text-sm text-ink mb-0.5 dark:text-slate-100">${badge}${escapeHtml(item.t)}</span>
+      <span class="block text-xs text-ink-500 leading-relaxed dark:text-slate-400">${escapeHtml(item.body)}</span>
+    </button>`;
+  }).join('');
+
+  presetList.querySelectorAll('[data-idx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = combined[parseInt(btn.dataset.idx, 10)];
+      insertPresetIntoStage(item.body);
+    });
+  });
+}
+
+function insertPresetIntoStage(text){
+  if (!activeStageForPreset) return;
+  activeStageForPreset.notes = (activeStageForPreset.notes ? activeStageForPreset.notes.trim() + '\n\n' : '') + text;
+  const card = stagesList.querySelector(`[data-id="${activeStageForPreset.id}"] [data-role="notes"]`);
+  if (card) card.value = activeStageForPreset.notes;
+  saveState();
+  closeModal(presetModal);
+}
+
+/* ---------------- Import / Export JSON ---------------- */
+el('exportJsonBtn').addEventListener('click', () => {
+  const safeTopic = (state.meta.topic || 'lesson-plan').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const filename = (safeTopic || 'lesson-plan') + '.json';
+  const json = JSON.stringify(state, null, 2);
+  try{
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    // Fallback for environments where Blob/createObjectURL is unavailable
+    try{
+      const a = document.createElement('a');
+      a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }catch(e2){
+      alert('Could not download the file automatically. Please try a different browser, or copy this plan\u2019s data manually from the browser console.');
+    }
+  }
+});
+
+el('importJsonInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed.meta || !Array.isArray(parsed.stages)) throw new Error('Not an iPlanner file');
+      if (!parsed.objective) parsed.objective = { values: {}, text: '', manualEdit: false };
+      migrateStageInteractions(parsed.stages);
+      state = parsed;
+      hydrateForm();
+      saveState();
+    } catch (err) {
+      alert('That file doesn\u2019t look like a valid iPlanner template.\n(' + err.message + ')');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+el('resetBtn').addEventListener('click', () => {
+  if (!confirm('Clear the current plan? This can\u2019t be undone (export a JSON backup first if you want to keep it).')) return;
+  state = defaultState();
+  hydrateForm();
+  saveState();
+});
+
+/* ---------------- Print / PDF export ---------------- */
+const PDF_THEMES = {
+  emerald:    { name: 'Emerald & Sage',        header: '#1B6B49', headerText: '#F3FBF6', tableHead: '#DFF2E6', border: '#9FD3B4', text: '#173826', paper: '#F5FAF7' },
+  slateGold:  { name: 'Slate & Gold',          header: '#1E2A38', headerText: '#FBF8F1', tableHead: '#F1E7CC', border: '#D6C495', text: '#1E2A38', paper: '#FBF8F1' },
+  royalPlum:  { name: 'Royal Plum',            header: '#472C67', headerText: '#F8F3FB', tableHead: '#ECDDF6', border: '#C79FDE', text: '#2E1A40', paper: '#FAF6FC' },
+  terracotta: { name: 'Terracotta',            header: '#A3461F', headerText: '#FDF4EC', tableHead: '#F5DAC0', border: '#DFA976', text: '#3D2011', paper: '#FDF7F0' },
+  grayscale:  { name: 'Minimalist Grayscale',  header: '#222222', headerText: '#FAFAFA', tableHead: '#EAEAE6', border: '#B7B7B2', text: '#1A1A1A', paper: '#FAFAF7' },
+};
+const INTERACTION_TONE_HEX = { slate: '#3B6EA5', plum: '#7B5EA7', teal: '#2E8B84', amber: '#C68F2A', brick: '#C1443B', forest: '#26593F' };
+
+pdfThemeSelect.addEventListener('change', () => localStorage.setItem(PDF_THEME_KEY, pdfThemeSelect.value));
+
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function buildPrintSheet(){
+  const sheet = el('printSheet');
+  const theme = PDF_THEMES[pdfThemeSelect.value] || PDF_THEMES.emerald;
+  const isGrayscale = pdfThemeSelect.value === 'grayscale';
+  const target = parseInt(state.meta.duration || 0, 10);
+  const allocated = state.stages.reduce((sum, s) => sum + (parseInt(s.duration, 10) || 0), 0);
+
+  // Let the fallback in-page print path (if the new-tab popup gets blocked) pick up the same paper tone
+  document.documentElement.style.setProperty('--print-paper-bg', theme.paper);
+
+  const rows = state.stages.map((s, idx) => {
+    const chips = (s.interactions || []).filter(k => INTERACTION_MAP[k]).map(k => {
+      const i = INTERACTION_MAP[k];
+      if (isGrayscale) {
+        return `<span class="ps-badge" style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:800;letter-spacing:.02em;color:${theme.text};background:transparent;border:1.5px solid ${theme.text};border-radius:999px;padding:3px 9px;margin:0 5px 5px 0;">${i.label}</span>`;
+      }
+      const color = INTERACTION_TONE_HEX[i.tone];
+      return `<span class="ps-badge" style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:800;letter-spacing:.02em;color:#fff;background:${color};border-radius:999px;padding:3px 9px;margin:0 5px 5px 0;">${i.label}</span>`;
+    }).join('');
+    const rowBg = idx % 2 === 0 ? theme.paper : theme.tableHead;
+    return `
+      <tr style="background:${rowBg};">
+        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};vertical-align:top;white-space:nowrap;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:${theme.header};color:${theme.headerText};font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:800;">${idx+1}</span>
+        </td>
+        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};font-family:Fraunces,serif;font-weight:800;font-size:15px;vertical-align:top;white-space:nowrap;color:${theme.text};">${escapeHtml(s.name)}</td>
+        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};vertical-align:top;white-space:nowrap;">
+          <span style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:${theme.text};background:${hexToRgba(theme.header, isGrayscale ? 0.08 : 0.12)};border-radius:6px;padding:4px 8px;">${s.duration} min</span>
+        </td>
+        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};vertical-align:top;white-space:nowrap;max-width:170px;">${chips || `<span style="color:${hexToRgba(theme.text,0.4)};font-size:11px;">—</span>`}</td>
+        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};font-size:13px;line-height:1.65;font-weight:500;vertical-align:top;white-space:pre-wrap;color:${theme.text};">${escapeHtml(s.notes) || `<span style="color:${hexToRgba(theme.text,0.4)};">—</span>`}</td>
+      </tr>`;
+  }).join('');
+
+  const fwLabel = FRAMEWORKS[state.framework] ? FRAMEWORKS[state.framework].label + (state.framework === 'PDP' ? ' (' + state.pdpSkill + ')' : '') : '—';
+  const objectiveText = (state.objective && state.objective.text) ? state.objective.text : '';
+  const labelStyle = `font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${hexToRgba(theme.text, 0.62)};`;
+
+  sheet.style.background = theme.paper;
+  sheet.style.padding = '22px 20px 34px';
+  sheet.innerHTML = `
+    <div style="border:3px solid ${theme.header};border-radius:18px;overflow:hidden;box-shadow:0 2px 0 ${hexToRgba(theme.header,0.18)};">
+      <div style="background:${theme.header};color:${theme.headerText};padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+        <div style="min-width:0;">
+          <div style="font-family:Fraunces,serif;font-weight:900;font-size:25px;letter-spacing:-.01em;line-height:1.15;">${escapeHtml(state.meta.topic || 'Untitled Lesson')}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;opacity:.85;margin-top:5px;letter-spacing:.02em;">${escapeHtml(state.meta.level)} · ${escapeHtml(state.meta.skill)} · ${fwLabel}</div>
+        </div>
+        <div style="flex-shrink:0;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;border:1.5px solid ${hexToRgba(theme.headerText,0.5)};border-radius:12px;padding:8px 16px;white-space:nowrap;">
+          <div>${target} min target</div>
+          <div style="opacity:.85;margin-top:2px;">${allocated} min planned</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;background:${theme.tableHead};border-top:3px solid ${theme.header};">
+        <div style="padding:16px 24px;border-right:2px solid ${theme.border};">
+          <div style="${labelStyle}">Teacher</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:10px;color:${theme.text};">${escapeHtml(state.meta.teacherName) || '—'}</div>
+          <div style="${labelStyle}">School</div>
+          <div style="font-size:14px;font-weight:700;color:${theme.text};">${escapeHtml(state.meta.schoolName) || '—'}</div>
+        </div>
+        <div style="padding:16px 24px;">
+          <div style="${labelStyle}">Date</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:10px;color:${theme.text};">${escapeHtml(state.meta.date) || '—'}</div>
+          <div style="${labelStyle}">Duration</div>
+          <div style="font-size:14px;font-weight:700;color:${theme.text};">${target} minutes</div>
+        </div>
+      </div>
+    </div>
+
+    ${objectiveText ? `
+    <div style="margin-top:16px;border-radius:14px;overflow:hidden;background:${theme.tableHead};border:2px solid ${theme.border};display:flex;">
+      <div style="width:7px;background:${theme.header};flex-shrink:0;"></div>
+      <div style="padding:14px 20px;">
+        <div style="${labelStyle}">🎯 Lesson Objective (SWBAT)</div>
+        <div style="font-size:14.5px;line-height:1.6;font-weight:600;color:${theme.text};margin-top:5px;">${escapeHtml(objectiveText)}</div>
+      </div>
+    </div>` : ''}
+
+    <table style="width:100%;border-collapse:collapse;margin-top:18px;border-radius:14px;overflow:hidden;box-shadow:0 0 0 3px ${theme.header};">
+      <thead>
+        <tr style="background:${theme.header};">
+          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};width:40px;">#</th>
+          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};">Stage</th>
+          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};">Time</th>
+          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};">Interaction</th>
+          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};">Procedure</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr style="background:${theme.paper};"><td colspan="5" style="padding:18px;color:${hexToRgba(theme.text,0.5)};font-size:13px;">No stages added yet.</td></tr>`}</tbody>
+    </table>
+
+    <div style="margin-top:22px;display:flex;justify-content:flex-end;">
+      <div style="display:inline-flex;align-items:center;gap:6px;border:2px dashed ${theme.header};border-radius:999px;padding:6px 16px;transform:rotate(-2deg);font-family:Fraunces,serif;font-weight:700;font-size:11.5px;color:${theme.header};background:${theme.paper};">
+        Made with iPlanner
+      </div>
+    </div>
+  `;
+}
+
+function exportPolishedPdf(){
+  buildPrintSheet();
+  const sheetHtml = el('printSheet').innerHTML;
+  const theme = PDF_THEMES[pdfThemeSelect.value] || PDF_THEMES.emerald;
+  const docTitle = (state.meta.topic || 'Lesson Plan') + ' — iPlanner';
+  const standaloneHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>${escapeHtml(docTitle)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700;800;900&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  @page{ size: A4; margin: 14mm; }
+  *{ box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html,body{ background:${theme.paper}; margin:0; }
+  body{ font-family:'Inter',sans-serif; color:${theme.text}; padding:22px 20px 34px; }
+</style>
+</head>
+<body>${sheetHtml}
+<script>
+  window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 250); });
+<\/script>
+</body>
+</html>`;
+
+  // Primary path: open a clean standalone tab and print from there.
+  // This sidesteps popup / print-permission restrictions that can affect printing
+  // from inside the app's own page (e.g. when embedded in a preview frame).
+  let opened = null;
+  try{
+    opened = window.open('', '_blank');
+    if (opened) {
+      opened.document.open();
+      opened.document.write(standaloneHtml);
+      opened.document.close();
+      opened.focus();
+      // Fallback in case the new tab's own load listener doesn't fire in time
+      setTimeout(() => { try{ if (!opened.closed) opened.print(); }catch(e){} }, 900);
+    }
+  }catch(e){ opened = null; }
+
+  if (!opened) {
+    // Fallback path: print the current page in place (older hide-everything technique)
+    try{
+      window.print();
+    }catch(e2){
+      alert('Your browser blocked the print preview. Please allow pop-ups for this page, then try "Export polished PDF" again — or use your browser\u2019s own Print command (Ctrl/Cmd+P).');
+    }
+  }
+}
+
+el('printBtn').addEventListener('click', exportPolishedPdf);
+window.addEventListener('beforeprint', buildPrintSheet);
+
+/* ---------------- Dark mode toggle ---------------- */
+const darkModeToggle = el('darkModeToggle'), iconMoon = el('iconMoon'), iconSun = el('iconSun');
+function syncDarkIcon(){
+  const isDark = document.documentElement.classList.contains('dark');
+  iconMoon.classList.toggle('hidden', isDark);
+  iconSun.classList.toggle('hidden', !isDark);
+}
+darkModeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+  syncDarkIcon();
+});
+syncDarkIcon();
+
+/* ---------------- Contact & Support modal ---------------- */
+const contactModal = el('contactModal');
+el('contactBtn').addEventListener('click', () => {
+  contactModal.classList.remove('hidden');
+  contactModal.classList.add('flex');
+});
+el('contactModalClose').addEventListener('click', () => closeModal(contactModal));
+contactModal.addEventListener('click', (e) => { if (e.target === contactModal) closeModal(contactModal); });
+
+/* ---------------- Init ---------------- */
+hydrateForm();
+
+if (!state.meta.date) {
+  const today = new Date();
+  lessonDateI.value = today.toISOString().slice(0, 10);
+  state.meta.date = lessonDateI.value;
+}
+
+/* ---------------- Service worker registration (PWA) ---------------- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {/* offline support just won't be available */});
+  });
+}
+</script>
+</body>
+</html>
