@@ -1,7 +1,7 @@
 {
-  "name": "Lesson Plan Desk",
-  "short_name": "LessonDesk",
-  "description": "Build structured lesson plans fast — pick a framework, tag interactions, and export a print-ready plan. Works offline.",
+  "name": "iPlanner",
+  "short_name": "iPlanner",
+  "description": "iPlanner (by G3 Apps) — build structured lesson plans fast. Pick a framework, tag interactions, and export a polished print-ready plan. Works offline.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
