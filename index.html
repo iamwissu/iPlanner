@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><link rel="icon" type="image/png" href="favicon.png">
+<head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>iPlanner — G3 APPs</title>
@@ -367,6 +367,7 @@
           <option value="PPP">PPP — Presentation ➔ Practice ➔ Production</option>
           <option value="ECRIF">ECRIF — Encounter ➔ Clarify ➔ Remember ➔ Internalize ➔ Fluency</option>
           <option value="PDP">PDP — Receptive / Productive Skills (Pre ➔ During ➔ Post)</option>
+          <option value="PDRE">PDRE — Process Writing (Prepare ➔ Draft ➔ Revise ➔ Edit)</option>
         </select>
 
         <div id="pdpSkillWrap" class="hidden mt-3">
@@ -485,10 +486,10 @@
     <p class="text-sm text-ink-500 dark:text-slate-400 leading-relaxed mb-4">
       Questions, bug reports, or feature ideas? Reach out any time — iPlanner is built by a fellow teacher and every message helps.
     </p>
-    <a href="mailto:ali.bikourne1@gmail.com?subject=iPlanner%20feedback"
+    <a href="mailto:generations3.apps@gmail.com?subject=iPlanner%20feedback"
       class="min-h-[46px] rounded-lg bg-forest hover:bg-forest-600 text-white text-sm font-semibold px-5 flex items-center justify-center gap-2">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9 6 9-6M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z"/></svg>
-      Email ali.bikourne1@gmail.com
+      Email generations3.apps@gmail.com
     </a>
   </div>
 </div>
@@ -546,6 +547,16 @@ const FRAMEWORKS = {
       'For writing specifically it commonly expands into Prepare ➔ Draft ➔ Revise ➔ Edit (PDRE), reflecting the recursive nature of the writing process.'
     ],
     link: 'https://www.google.com/search?q=pre+during+post+lesson+framework+reading+listening+speaking'
+  },
+  PDRE: {
+    label: 'PDRE — Process Writing',
+    core: ['Prepare', 'Draft', 'Revise', 'Edit'],
+    blurb: 'Prepare ➔ Draft ➔ Revise ➔ Edit. The process-writing cycle, treating writing as a recursive series of stages rather than a single pass.',
+    modalBody: [
+      'PDRE frames writing as a process, not a one-shot product. Students first Prepare — gathering ideas, planning structure, activating vocabulary — then produce a first Draft focused on getting ideas down. They Revise for content, organization and clarity (often with peer or teacher feedback), and finally Edit for grammar, spelling and punctuation.',
+      'It works well whenever the main output of the lesson is a piece of writing, since it gives students permission to improve a text in stages rather than expecting a polished result on the first try.'
+    ],
+    link: 'https://www.google.com/search?q=PDRE+process+writing+prepare+draft+revise+edit+framework'
   }
 };
 
@@ -582,13 +593,17 @@ function migrateStageInteractions(stages){
 
 /* ---------------- Quick procedure snippets (1-click macros) ---------------- */
 const SNIPPETS = [
-  { label: '+ T monitors', text: 'Teacher monitors, manages time, and provides assistance as needed.' },
-  { label: '+ T facilitates', text: 'Teacher facilitates discussion and prompts students with guiding questions.' },
-  { label: '+ T corrects', text: 'Teacher conducts delayed error correction on the board.' },
-  { label: '+ SS read silently', text: 'Students read the text silently and independently.' },
-  { label: '+ SS read in pairs', text: 'Students read aloud in pairs, helping each other with pronunciation.' },
-  { label: '+ SS answer', text: 'Students write down their answers and compare with a partner.' },
-  { label: '+ SS drill', text: 'Students repeat the target expression chorally and individually.' },
+  { label: '+ T monitors', text: 'Teacher monitors.' },
+  { label: '+ T facilitates', text: 'Teacher facilitates' },
+  { label: '+ T corrects', text: 'Teacher corrects with the students' },
+  { label: '+ SS read', text: 'Students read the text' },
+  { label: '+ SS read in pairs', text: 'Students read in pairs' },
+  { label: '+ SS answer', text: 'Students answer' },
+  { label: '+ SS discuss', text: 'Students discuss in pairs or groups' },
+  { label: '+ SS write', text: 'Students write individually' },
+  { label: '+ SS write in pairs', text: 'Students write in pairs' },
+  { label: '+ SS present', text: 'Students present their work to the class' },
+  { label: '+ SS drill', text: 'Students repeat the target expression chorally.' },
 ];
 
 /* ---------------- Smart lesson objective generator ---------------- */
@@ -1273,28 +1288,26 @@ function buildPrintSheet(){
   // Let the fallback in-page print path (if the new-tab popup gets blocked) pick up the same paper tone
   document.documentElement.style.setProperty('--print-paper-bg', theme.paper);
 
-  const rows = state.stages.map((s, idx) => {
+  const stageBlocks = state.stages.map((s, idx) => {
     const chips = (s.interactions || []).filter(k => INTERACTION_MAP[k]).map(k => {
       const i = INTERACTION_MAP[k];
       if (isGrayscale) {
-        return `<span class="ps-badge" style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:800;letter-spacing:.02em;color:${theme.text};background:transparent;border:1.5px solid ${theme.text};border-radius:999px;padding:3px 9px;margin:0 5px 5px 0;">${i.label}</span>`;
+        return `<span class="ps-badge" style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:800;letter-spacing:.02em;color:${theme.headerText};background:transparent;border:1.5px solid ${theme.headerText};border-radius:999px;padding:3px 9px;margin:0 5px 5px 0;">${i.label}</span>`;
       }
       const color = INTERACTION_TONE_HEX[i.tone];
       return `<span class="ps-badge" style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:800;letter-spacing:.02em;color:#fff;background:${color};border-radius:999px;padding:3px 9px;margin:0 5px 5px 0;">${i.label}</span>`;
     }).join('');
-    const rowBg = idx % 2 === 0 ? theme.paper : theme.tableHead;
+    const blockBg = idx % 2 === 0 ? theme.paper : theme.tableHead;
     return `
-      <tr style="background:${rowBg};">
-        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};vertical-align:top;white-space:nowrap;">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;background:${theme.header};color:${theme.headerText};font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:800;">${idx+1}</span>
-        </td>
-        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};font-family:Fraunces,serif;font-weight:800;font-size:15px;vertical-align:top;white-space:nowrap;color:${theme.text};">${escapeHtml(s.name)}</td>
-        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};vertical-align:top;white-space:nowrap;">
-          <span style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:${theme.text};background:${hexToRgba(theme.header, isGrayscale ? 0.08 : 0.12)};border-radius:6px;padding:4px 8px;">${s.duration} min</span>
-        </td>
-        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};vertical-align:top;white-space:nowrap;max-width:170px;">${chips || `<span style="color:${hexToRgba(theme.text,0.4)};font-size:11px;">—</span>`}</td>
-        <td style="padding:14px 14px;border-bottom:2px solid ${theme.border};font-size:13px;line-height:1.65;font-weight:500;vertical-align:top;white-space:pre-wrap;color:${theme.text};">${escapeHtml(s.notes) || `<span style="color:${hexToRgba(theme.text,0.4)};">—</span>`}</td>
-      </tr>`;
+      <div style="border:2.5px solid ${theme.border};border-radius:16px;overflow:hidden;margin-top:14px;background:${blockBg};">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;padding:12px 18px;background:${theme.header};border-bottom:2.5px solid ${theme.border};">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:999px;background:${hexToRgba(theme.headerText,0.22)};color:${theme.headerText};font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:800;flex-shrink:0;">${idx+1}</span>
+          <span style="font-family:Fraunces,serif;font-weight:800;font-size:17px;color:${theme.headerText};margin-right:auto;">${escapeHtml(s.name)}</span>
+          <span style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:${theme.headerText};background:${hexToRgba(theme.headerText,0.18)};border-radius:999px;padding:4px 11px;flex-shrink:0;">${s.duration} min</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">${chips || `<span style="color:${hexToRgba(theme.headerText,0.55)};font-size:11px;">—</span>`}</div>
+        </div>
+        <div style="padding:16px 20px 20px;font-size:14.5px;line-height:1.75;font-weight:500;color:${theme.text};white-space:pre-wrap;">${escapeHtml(s.notes) || `<span style="color:${hexToRgba(theme.text,0.4)};">No procedure notes yet.</span>`}</div>
+      </div>`;
   }).join('');
 
   const fwLabel = FRAMEWORKS[state.framework] ? FRAMEWORKS[state.framework].label + (state.framework === 'PDP' ? ' (' + state.pdpSkill + ')' : '') : '—';
@@ -1340,18 +1353,10 @@ function buildPrintSheet(){
       </div>
     </div>` : ''}
 
-    <table style="width:100%;border-collapse:collapse;margin-top:18px;border-radius:14px;overflow:hidden;box-shadow:0 0 0 3px ${theme.header};">
-      <thead>
-        <tr style="background:${theme.header};">
-          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};width:40px;">#</th>
-          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};">Stage</th>
-          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};">Time</th>
-          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};">Interaction</th>
-          <th style="text-align:left;padding:11px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:${theme.headerText};">Procedure</th>
-        </tr>
-      </thead>
-      <tbody>${rows || `<tr style="background:${theme.paper};"><td colspan="5" style="padding:18px;color:${hexToRgba(theme.text,0.5)};font-size:13px;">No stages added yet.</td></tr>`}</tbody>
-    </table>
+    <div style="margin-top:20px;">
+      <div style="${labelStyle}padding-left:2px;">Lesson Stages</div>
+      ${stageBlocks || `<div style="margin-top:14px;border:2.5px dashed ${theme.border};border-radius:16px;padding:20px;text-align:center;color:${hexToRgba(theme.text,0.5)};font-size:13px;">No stages added yet.</div>`}
+    </div>
 
     <div style="margin-top:22px;display:flex;justify-content:flex-end;">
       <div style="display:inline-flex;align-items:center;gap:6px;border:2px dashed ${theme.header};border-radius:999px;padding:6px 16px;transform:rotate(-2deg);font-family:Fraunces,serif;font-weight:700;font-size:11.5px;color:${theme.header};background:${theme.paper};">
