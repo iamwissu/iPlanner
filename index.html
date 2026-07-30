@@ -265,7 +265,7 @@
   </header>
 
   <!-- ============ Main dual-column layout ============ -->
-  <main class="no-print flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 pb-28 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
+  <main class="no-print flex-1 min-w-0 max-w-7xl mx-auto w-full px-4 sm:px-6 pb-28 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
 
     <!-- LEFT: metadata + framework -->
     <section aria-label="Lesson details" class="lg:sticky lg:top-[64px] space-y-4 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:pr-1">
@@ -402,12 +402,12 @@
     </section>
 
     <!-- RIGHT: stages -->
-    <section aria-label="Lesson stages">
+    <section aria-label="Lesson stages" class="min-w-0">
       <div id="emptyState" class="stage-card rounded-2xl p-10 text-center">
         <p class="font-display text-xl mb-1">No framework selected yet</p>
         <p class="text-ink-500 text-sm dark:text-slate-400">Choose a framework on the left and your stages will appear here, ready to fill in.</p>
       </div>
-      <div id="stagesList" class="space-y-4"></div>
+      <div id="stagesList" class="space-y-4 min-w-0"></div>
       <button id="addCustomStageBtn" class="hidden mt-2 min-h-[46px] w-full rounded-xl border-2 border-dashed border-ink/15 text-ink-500 hover:border-forest hover:text-forest text-sm font-medium dark:border-slate-600 dark:text-slate-400">
         + Add a custom stage
       </button>
