@@ -36,12 +36,12 @@
         colors: {
           ink: { DEFAULT: '#1E2A38', 700: '#2A3B4E', 500: '#5B6472' },
           paper: { DEFAULT: '#FBF8F1', 100: '#F3EFE3', 200: '#EAE4D3' },
-          forest: { DEFAULT: '#2F6B4F', 600: '#26593F' },
-          amber:  { DEFAULT: '#E3A83B', 600: '#C68F2A' },
-          brick:  { DEFAULT: '#C1443B', 600: '#A6362E' },
-          slate:  { DEFAULT: '#3B6EA5', 600: '#2F5A87' },
-          plum:   { DEFAULT: '#7B5EA7', 600: '#654B8C' },
-          teal:   { DEFAULT: '#2E8B84', 600: '#25726C' },
+          forest: { DEFAULT: '#2E63D6', 600: '#1E4BAB' },
+          amber:  { DEFAULT: '#C26E19', 600: '#9B550D' },
+          brick:  { DEFAULT: '#EF463F', 600: '#BF312B' },
+          slate:  { DEFAULT: '#E0409C', 600: '#B32D7A' },
+          plum:   { DEFAULT: '#9B2FE8', 600: '#791EBA' },
+          teal:   { DEFAULT: '#3FA824', 600: '#2E8618' },
         },
         fontFamily: {
           display: ['"Fraunces"', 'serif'],
@@ -114,12 +114,12 @@
   }
   .chip[data-active="false"]{ background:#F3EFE3; color:#5B6472; border-color:#E7E0CC; }
   .chip[data-active="false"]:hover{ border-color:#c9c0a0; }
-  .chip[data-tone="slate"][data-active="true"]{ background:#3B6EA5; color:#fff; }
-  .chip[data-tone="plum"][data-active="true"]{ background:#7B5EA7; color:#fff; }
-  .chip[data-tone="teal"][data-active="true"]{ background:#2E8B84; color:#fff; }
-  .chip[data-tone="amber"][data-active="true"]{ background:#C68F2A; color:#fff; }
-  .chip[data-tone="brick"][data-active="true"]{ background:#C1443B; color:#fff; }
-  .chip[data-tone="forest"][data-active="true"]{ background:#2F6B4F; color:#fff; }
+  .chip[data-tone="slate"][data-active="true"]{ background:#E0409C; color:#fff; }
+  .chip[data-tone="plum"][data-active="true"]{ background:#9B2FE8; color:#fff; }
+  .chip[data-tone="teal"][data-active="true"]{ background:#3FA824; color:#fff; }
+  .chip[data-tone="amber"][data-active="true"]{ background:#C26E19; color:#fff; }
+  .chip[data-tone="brick"][data-active="true"]{ background:#EF463F; color:#fff; }
+  .chip[data-tone="forest"][data-active="true"]{ background:#2E63D6; color:#fff; }
 
   /* ---- Snippet macro pills (quick-insert procedure text) ---- */
   .snippet-pill{
@@ -135,7 +135,7 @@
     min-height:30px;
     transition: all .12s ease;
   }
-  .snippet-pill:hover{ border-color:#2F6B4F; color:#2F6B4F; background:#fff; }
+  .snippet-pill:hover{ border-color:#2E63D6; color:#2E63D6; background:#fff; }
 
   /* =========================== DARK MODE =========================== */
   html.dark, html.dark body{ background:#0f172a; }
@@ -143,19 +143,19 @@
   .dark .chip[data-active="false"]{ background:#0f172a; color:#94a3b8; border-color:#334155; }
   .dark .chip[data-active="false"]:hover{ border-color:#475569; }
   .dark .snippet-pill{ background:#0f172a; color:#94a3b8; border-color:#334155; }
-  .dark .snippet-pill:hover{ border-color:#E3A83B; color:#E3A83B; background:#1e293b; }
+  .dark .snippet-pill:hover{ border-color:#C26E19; color:#C26E19; background:#1e293b; }
   .dark .modal-backdrop{ background: rgba(0,0,0,0.65); }
   .dark .field-select{
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");
   }
-  .dark ::selection{ background:#E3A83B; color:#0f172a; }
+  .dark ::selection{ background:#C26E19; color:#0f172a; }
 
   textarea.stage-notes{ field-sizing: content; }
 
-  ::selection{ background:#E3A83B; color:#1E2A38; }
+  ::selection{ background:#C26E19; color:#1E2A38; }
 
   input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible{
-    outline: 2px solid #2F6B4F; outline-offset: 2px;
+    outline: 2px solid #2E63D6; outline-offset: 2px;
   }
 
   /* Custom select chevron on paper inputs */
@@ -1268,7 +1268,7 @@ const PDF_THEMES = {
   terracotta: { name: 'Terracotta',            header: '#A3461F', headerText: '#FDF4EC', tableHead: '#F5DAC0', border: '#DFA976', text: '#3D2011', paper: '#FDF7F0' },
   grayscale:  { name: 'Minimalist Grayscale',  header: '#222222', headerText: '#FAFAFA', tableHead: '#EAEAE6', border: '#B7B7B2', text: '#1A1A1A', paper: '#FAFAF7' },
 };
-const INTERACTION_TONE_HEX = { slate: '#3B6EA5', plum: '#7B5EA7', teal: '#2E8B84', amber: '#C68F2A', brick: '#C1443B', forest: '#26593F' };
+const INTERACTION_TONE_HEX = { slate: '#E0409C', plum: '#9B2FE8', teal: '#3FA824', amber: '#C26E19', brick: '#EF463F', forest: '#1E4BAB' };
 
 pdfThemeSelect.addEventListener('change', () => localStorage.setItem(PDF_THEME_KEY, pdfThemeSelect.value));
 
